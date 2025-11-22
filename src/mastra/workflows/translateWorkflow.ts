@@ -144,10 +144,42 @@ const englishAnswerStep = createStep({
   },
 });
 
+const englishToNetSlangStep = createStep({
+  id: "english-to-net-slang",
+  inputSchema: z.object({
+    englishAnswer: z.string(),
+    stages: stageLogSchema,
+  }),
+  outputSchema: z.object({
+    netSlangEnglish: z.string(),
+    stages: stageLogSchema,
+  }),
+  execute: async ({ inputData, mastra }) => {
+    const { englishAnswer, stages } = inputData;
+    const netSlangAgent = mastra.getAgent("netSlangAgent");
+    const netSlangResult = await netSlangAgent.generate(englishAnswer);
+
+    const netSlangEnglish = (netSlangResult.text ?? "").trim();
+
+    return {
+      netSlangEnglish,
+      stages: [
+        ...stages,
+        {
+          id: "english-to-net-slang",
+          label: "英語→ネットスラング英語",
+          input: englishAnswer,
+          output: netSlangEnglish,
+        },
+      ],
+    };
+  },
+});
+
 const englishToHangulStep = createStep({
   id: "english-to-hangul",
   inputSchema: z.object({
-    englishAnswer: z.string(),
+    netSlangEnglish: z.string(),
     stages: stageLogSchema,
   }),
   outputSchema: z.object({
@@ -155,10 +187,10 @@ const englishToHangulStep = createStep({
     stages: stageLogSchema,
   }),
   execute: async ({ inputData, mastra }) => {
-    const { englishAnswer, stages } = inputData;
+    const { netSlangEnglish, stages } = inputData;
     const translateAgent = mastra.getAgent("translateAgent");
     const hangulResult = await translateAgent.generate(
-      `Translate the following English text into Korean (Hangul) only.\n${englishAnswer}`
+      `Translate the following English text into Korean (Hangul) only.\n${netSlangEnglish}`
     );
 
     const hangulAnswer = (hangulResult.text ?? "").trim();
@@ -169,8 +201,8 @@ const englishToHangulStep = createStep({
         ...stages,
         {
           id: "english-to-hangul",
-          label: "英語→ハングル",
-          input: englishAnswer,
+          label: "ネットスラング英語→ハングル",
+          input: netSlangEnglish,
           output: hangulAnswer,
         },
       ],
@@ -226,6 +258,7 @@ export const translateWorkflow = createWorkflow({
   .then(chuuniToArabicStep)
   .then(arabicToEnglishStep)
   .then(englishAnswerStep)
+  .then(englishToNetSlangStep)
   .then(englishToHangulStep)
   .then(hangulToJapaneseStep)
   .commit();
