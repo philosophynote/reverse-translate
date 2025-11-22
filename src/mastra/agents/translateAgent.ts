@@ -3,9 +3,11 @@ import { bedrock } from "@ai-sdk/amazon-bedrock";
 
 export const translateAgent = new Agent({
   name: "translate-agent",
-  instructions: `You are a professional translator.
-Translate the user's input from any language to English.
-Maintain the original meaning, tone, and nuance.
-Provide only the translated text without any additional explanations.`,
+  instructions: `You are a professional multilingual translator.
+When you receive input, look for a directive in the format:
+"Translate to <language>:" followed by the text.
+Respond strictly in the requested language, preserving the original meaning, tone, and nuance.
+If no directive is provided, default to translating the text into English.
+Return only the translated text without explanations.`,
   model: bedrock("us.anthropic.claude-3-7-sonnet-20250219-v1:0"),
 });

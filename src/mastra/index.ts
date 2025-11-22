@@ -4,10 +4,11 @@ import { PinoLogger } from '@mastra/loggers';
 import { LibSQLStore } from '@mastra/libsql';
 import { assistantAgent } from './agents/assistantAgent';
 import { translateAgent } from './agents/translateAgent';
+import { xAiAgent } from './agents/xAiAgent';
 import { translateWorkflow } from './workflows/translateWorkflow';
 
 export const mastra = new Mastra({
-  agents: { assistantAgent, translateAgent },
+  agents: { assistantAgent, translateAgent, xAiAgent },
   workflows: { translateWorkflow },
   storage: new LibSQLStore({
     // stores observability, scores, ... into memory storage, if it needs to persist, change to file:../mastra.db
