@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     // Mastraワークフローインスタンスを取得
     const { mastra } = await import("../../../../src/mastra");
-    const workflow = mastra.getWorkflow("testWorkflow");
+    const workflow = mastra.getWorkflow("translateWorkflow");
 
     if (!workflow) {
       return NextResponse.json(
@@ -35,7 +35,8 @@ export async function POST(request: NextRequest) {
     if (result.status === "success" && result.result) {
       return NextResponse.json({
         success: true,
-        response: result.result.response,
+        originalMessage: result.result.originalMessage,
+        translatedMessage: result.result.translatedMessage,
         thinking: result.result.thinking,
       });
     } else {

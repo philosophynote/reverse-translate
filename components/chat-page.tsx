@@ -67,7 +67,7 @@ export default function ChatPage() {
         const aiResponse: Message = {
           id: `msg-${Date.now() + 1}`,
           role: "assistant",
-          content: result.response || "",
+          content: `**元のメッセージ:**\n${result.originalMessage}\n\n**英語翻訳:**\n${result.translatedMessage}`,
           thinking: result.thinking,
           timestamp: new Date(),
         }
