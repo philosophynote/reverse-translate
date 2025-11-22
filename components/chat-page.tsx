@@ -49,42 +49,70 @@ export default function ChatPage() {
     setMessages(updatedMessages)
     setIsLoading(true)
 
-    // Simulate AI response with thinking process
-    setTimeout(() => {
-      const thinking = `推考プロセス:
-1. ユーザーの質問を分析
-2. 関連する知識を検索
-3. 適切な回答を構成
-4. 結果を形式化`
+    try {
+      // Call Mastra workflow via API Route
+      const response = await fetch("/api/workflow/execute", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: content.trim(),
+        }),
+      })
 
-      const aiResponse: Message = {
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        const aiResponse: Message = {
+          id: `msg-${Date.now() + 1}`,
+          role: "assistant",
+          content: result.response || "",
+          thinking: result.thinking,
+          timestamp: new Date(),
+        }
+
+        const finalMessages = [...updatedMessages, aiResponse]
+        setMessages(finalMessages)
+
+        // Update conversation
+        setConversations((prev) =>
+          prev.map((conv) => {
+            if (conv.id === currentConversationId) {
+              return {
+                ...conv,
+                messages: finalMessages,
+                title:
+                  conv.title === "New Chat" ? content.substring(0, 30) + (content.length > 30 ? "..." : "") : conv.title,
+              }
+            }
+            return conv
+          }),
+        )
+      } else {
+        // Error handling
+        const errorResponse: Message = {
+          id: `msg-${Date.now() + 1}`,
+          role: "assistant",
+          content: `エラー: ${result.error || "応答の取得に失敗しました"}`,
+          timestamp: new Date(),
+        }
+        const finalMessages = [...updatedMessages, errorResponse]
+        setMessages(finalMessages)
+      }
+    } catch (error) {
+      console.error("Failed to send message:", error)
+      const errorResponse: Message = {
         id: `msg-${Date.now() + 1}`,
         role: "assistant",
-        content: `これはAIの回答です: "${content}"についてのレスポンスです。`,
-        thinking: thinking,
+        content: "メッセージの送信に失敗しました。もう一度お試しください。",
         timestamp: new Date(),
       }
-
-      const finalMessages = [...updatedMessages, aiResponse]
+      const finalMessages = [...updatedMessages, errorResponse]
       setMessages(finalMessages)
-
-      // Update conversation
-      setConversations((prev) =>
-        prev.map((conv) => {
-          if (conv.id === currentConversationId) {
-            return {
-              ...conv,
-              messages: finalMessages,
-              title:
-                conv.title === "New Chat" ? content.substring(0, 30) + (content.length > 30 ? "..." : "") : conv.title,
-            }
-          }
-          return conv
-        }),
-      )
-
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
   }
 
   const handleDeleteConversation = (id: string) => {

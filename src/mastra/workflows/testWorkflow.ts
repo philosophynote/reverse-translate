@@ -1,17 +1,31 @@
 import { createWorkflow, createStep } from "@mastra/core/workflows";
 import { z } from "zod";
 
-const step1 = createStep({
-  id: "step-1",
+const chatStep = createStep({
+  id: "chat-step",
   inputSchema: z.object({
-    value: z.string(),
+    message: z.string(),
   }),
   outputSchema: z.object({
-    value: z.string(),
+    response: z.string(),
+    thinking: z.string(),
   }),
   execute: async ({ inputData }) => {
+    const { message } = inputData;
+
+    // 思考プロセスをシミュレート
+    const thinking = `思考プロセス:
+1. ユーザーのメッセージ「${message}」を分析
+2. コンテキストを理解
+3. 適切な応答を生成
+4. 結果をフォーマット`;
+
+    // AIの応答を生成（実際のAI処理に置き換え可能）
+    const response = `「${message}」についてのAI応答です。このメッセージは ${message.length} 文字です。`;
+
     return {
-      value: inputData.value,
+      response,
+      thinking,
     };
   },
 });
@@ -19,11 +33,12 @@ const step1 = createStep({
 export const testWorkflow = createWorkflow({
   id: "test-workflow",
   inputSchema: z.object({
-    value: z.string().describe("入力文字列"),
+    message: z.string().describe("ユーザーのチャットメッセージ"),
   }),
   outputSchema: z.object({
-    value: z.string().describe("出力文字列"),
+    response: z.string().describe("AIの応答"),
+    thinking: z.string().describe("思考プロセス"),
   }),
 })
-  .then(step1)
+  .then(chatStep)
   .commit();

@@ -1,69 +1,59 @@
 import { NextRequest, NextResponse } from "next/server";
 
-
 export async function POST(request: NextRequest) {
   try {
     // リクエストボディを取得
     const body = await request.json();
-    const { query, owner, repo } = body;
+    const { message } = body;
 
-
-    // バリデーションを実施（パラメーターが不足していたらエラーを返す）
-    if (!query || !owner || !repo) {
+    // バリデーション
+    if (!message || typeof message !== "string") {
       return NextResponse.json(
-        { error: "必要なパラメータが不足しています" },
+        { error: "メッセージが必要です" },
         { status: 400 }
       );
     }
+
     // Mastraワークフローインスタンスを取得
-    const { mastra } = await import("@/src/mastra");
+    const { mastra } = await import("../../../../src/mastra");
     const workflow = mastra.getWorkflow("testWorkflow");
 
     if (!workflow) {
-      throw new Error("ワークフローが見つかりません");
+      return NextResponse.json(
+        { error: "ワークフローが見つかりません" },
+        { status: 404 }
+      );
     }
 
     // ワークフローを実行
     const run = await workflow.createRunAsync();
     const result = await run.start({
-      inputData: { query, owner, repo }
+      inputData: { message }
     });
 
-    // 返却メッセージとステータスを作成
-    let message;
-    let isSuccess;
-    if (result.status === "success" && result.result.success) {
-      message = "ワークフローが正常に完了しました";
-      isSuccess = true;
+    // 結果を確認
+    if (result.status === "success" && result.result) {
+      return NextResponse.json({
+        success: true,
+        response: result.result.response,
+        thinking: result.result.thinking,
+      });
     } else {
-      message = `${(result as any).error} ${(result as any).result.errors}`;
-      isSuccess = false;
+      return NextResponse.json(
+        {
+          success: false,
+          error: "ワークフローの実行に失敗しました",
+        },
+        { status: 500 }
+      );
     }
-// Mastraワークフローの結果から必要な情報を抽出
-    const workflowOutput = result.status === "success" ? result.result : null;
-    const createdIssues = workflowOutput?.createdIssues || [];
-
-    // 結果をAPIレスポンスとして返却
-    return NextResponse.json({
-      success: isSuccess,
-      confluencePages: [{
-        title: query,
-        message: "要件書の検索と取得を実行しました"
-      }],
-      githubIssues: createdIssues,
-      message: message,
-      steps: result.steps ? Object.keys(result.steps).map(stepId => ({
-        stepId,
-        status: (result.steps as any)[stepId].status
-      })) : []
-    });
-
   } catch (error) {
-    // エラーをAPIレスポンスとして返却
+    console.error("Workflow execution error:", error);
     return NextResponse.json(
       {
+        success: false,
         error: "ワークフローの実行中にエラーが発生しました",
-        details: error instanceof Error ? error.message : "エラー"
+        details: error instanceof Error ? error.message : "不明なエラー",
       },
       { status: 500 }
     );
