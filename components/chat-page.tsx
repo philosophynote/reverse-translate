@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button"
 import ConversationSidebar from "./conversation-sidebar"
 import ChatContainer from "./chat-container"
 import ChatInput from "./chat-input"
-import type { Message, Conversation } from "@/types/chat"
+import type { Message, Conversation, WorkflowStage } from "@/types/chat"
+
+type StreamEvent =
+  | { type: "thinking"; stages?: WorkflowStage[] }
+  | { type: "answer"; content?: string }
+  | { type: "error"; message?: string }
+  | { type: "done" }
 
 export default function ChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -13,7 +19,13 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
-  const currentConversation = conversations.find((conv) => conv.id === currentConversationId)
+  const formatThinking = (stages: WorkflowStage[]) =>
+    stages
+      .map((stage, index) => {
+        const stepNumber = index + 1
+        return `【${stepNumber}】${stage.label}\nInput: ${stage.input}\nOutput: ${stage.output}`
+      })
+      .join("\n\n")
 
   const handleNewChat = () => {
     const newConversationId = `conv-${Date.now()}`
@@ -35,83 +47,177 @@ export default function ChatPage() {
   }
 
   const handleSendMessage = async (content: string) => {
-    if (!currentConversationId || !content.trim()) return
+    if (!currentConversationId) return
+    const trimmed = content.trim()
+    if (!trimmed) return
 
-    // Add user message
+    const activeConversationId = currentConversationId
+
     const userMessage: Message = {
       id: `msg-${Date.now()}`,
       role: "user",
-      content: content.trim(),
+      content: trimmed,
       timestamp: new Date(),
     }
 
-    const updatedMessages = [...messages, userMessage]
-    setMessages(updatedMessages)
+    const initialMessages = [...messages, userMessage]
+    setMessages(initialMessages)
+
+    let latestMessages = initialMessages
+    const replaceMessages = (next: Message[]) => {
+      latestMessages = next
+      setMessages(next)
+    }
+    const mutateMessages = (mutator: (prev: Message[]) => Message[]) => {
+      let nextState: Message[] = []
+      setMessages((prev) => {
+        nextState = mutator(prev)
+        return nextState
+      })
+      latestMessages = nextState
+    }
+
     setIsLoading(true)
+    let placeholderId: string | null = null
 
     try {
-      // Call Mastra workflow via API Route
+      const placeholderMessage: Message = {
+        id: `msg-${Date.now() + 1}`,
+        role: "assistant",
+        content: "",
+        timestamp: new Date(),
+      }
+      placeholderId = placeholderMessage.id
+      replaceMessages([...latestMessages, placeholderMessage])
+
       const response = await fetch("/api/workflow/execute", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          message: content.trim(),
+          message: trimmed,
         }),
       })
 
-      const result = await response.json()
-
-      if (response.ok && result.success) {
-        const finalAnswer = result.finalJapaneseAnswer ?? "(結果が取得できませんでした)"
-        const stages = Array.isArray(result.stages) ? result.stages : []
-        const aiResponse: Message = {
-          id: `msg-${Date.now() + 1}`,
-          role: "assistant",
-          content: `${finalAnswer}`,
-          timestamp: new Date(),
-          stages,
-        }
-
-        const finalMessages = [...updatedMessages, aiResponse]
-        setMessages(finalMessages)
-
-        // Update conversation
-        setConversations((prev) =>
-          prev.map((conv) => {
-            if (conv.id === currentConversationId) {
-              return {
-                ...conv,
-                messages: finalMessages,
-                title:
-                  conv.title === "New Chat" ? content.substring(0, 30) + (content.length > 30 ? "..." : "") : conv.title,
-              }
-            }
-            return conv
-          }),
-        )
-      } else {
-        // Error handling
-        const errorResponse: Message = {
-          id: `msg-${Date.now() + 1}`,
-          role: "assistant",
-          content: `エラー: ${result.error || "応答の取得に失敗しました"}`,
-          timestamp: new Date(),
-        }
-        const finalMessages = [...updatedMessages, errorResponse]
-        setMessages(finalMessages)
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({ error: "応答の取得に失敗しました" }))
+        throw new Error(errorPayload?.error || "応答の取得に失敗しました")
       }
+
+      if (!response.body) {
+        throw new Error("ストリーミングレスポンスが利用できませんでした")
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
+
+      const processThinking = (stages: WorkflowStage[]) => {
+        const safeStages = Array.isArray(stages) ? stages : []
+        const thinkingText = formatThinking(safeStages)
+        mutateMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === placeholderMessage.id ? { ...msg, thinking: thinkingText, stages: safeStages } : msg,
+          ),
+        )
+      }
+
+      const appendAnswer = (chunk: string) => {
+        const safeChunk = chunk ?? ""
+        mutateMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === placeholderMessage.id ? { ...msg, content: (msg.content ?? "") + safeChunk } : msg,
+          ),
+        )
+      }
+
+      const processEvent = (event: StreamEvent) => {
+        if (!event || typeof event !== "object") return
+        switch (event.type) {
+          case "thinking":
+            processThinking(event.stages || [])
+            break
+          case "answer":
+            appendAnswer(event.content || "")
+            break
+          case "error":
+            throw new Error(event.message || "ワークフロー実行中にエラーが発生しました")
+          case "done":
+          default:
+            break
+        }
+      }
+
+      let doneStreaming = false
+
+      while (!doneStreaming) {
+        const { value, done } = await reader.read()
+        if (done) {
+          if (buffer.trim()) {
+            processEvent(JSON.parse(buffer.trim()))
+          }
+          break
+        }
+
+        buffer += decoder.decode(value, { stream: true })
+
+        let newlineIndex
+        while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+          const line = buffer.slice(0, newlineIndex).trim()
+          buffer = buffer.slice(newlineIndex + 1)
+          if (!line) continue
+          const parsed = JSON.parse(line)
+          if (parsed.type === "done") {
+            doneStreaming = true
+            break
+          }
+          processEvent(parsed)
+        }
+      }
+
+      const snapshot = latestMessages
+      setConversations((prev) =>
+        prev.map((conv) => {
+          if (conv.id !== activeConversationId) {
+            return conv
+          }
+          return {
+            ...conv,
+            messages: snapshot,
+            title:
+              conv.title === "New Chat"
+                ? trimmed.substring(0, 30) + (trimmed.length > 30 ? "..." : "")
+                : conv.title,
+          }
+        }),
+      )
     } catch (error) {
       console.error("Failed to send message:", error)
-      const errorResponse: Message = {
-        id: `msg-${Date.now() + 1}`,
-        role: "assistant",
-        content: "メッセージの送信に失敗しました。もう一度お試しください。",
-        timestamp: new Date(),
+      const errorMessage = error instanceof Error ? error.message : "メッセージ処理中にエラーが発生しました"
+      if (placeholderId) {
+        mutateMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === placeholderId
+              ? { ...msg, content: `エラー: ${errorMessage}`, thinking: undefined, stages: undefined }
+              : msg,
+          ),
+        )
+      } else {
+        replaceMessages([
+          ...latestMessages,
+          {
+            id: `msg-${Date.now() + 2}`,
+            role: "assistant",
+            content: `エラー: ${errorMessage}`,
+            timestamp: new Date(),
+          },
+        ])
       }
-      const finalMessages = [...updatedMessages, errorResponse]
-      setMessages(finalMessages)
+
+      setConversations((prev) =>
+        prev.map((conv) => (conv.id === activeConversationId ? { ...conv, messages: latestMessages } : conv)),
+      )
     } finally {
       setIsLoading(false)
     }

@@ -12,18 +12,22 @@ interface ChatInputProps {
 export default function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
   const [input, setInput] = useState("")
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const submitMessage = () => {
     if (input.trim() && !isLoading) {
       onSendMessage(input)
       setInput("")
     }
   }
 
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    submitMessage()
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
-      handleSubmit(e as any)
+      submitMessage()
     }
   }
 
