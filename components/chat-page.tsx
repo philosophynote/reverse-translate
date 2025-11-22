@@ -64,11 +64,11 @@ export default function ChatPage() {
       const result = await response.json()
 
       if (response.ok && result.success) {
+        const finalAnswer = result.finalJapaneseAnswer ?? "(結果が取得できませんでした)"
         const aiResponse: Message = {
           id: `msg-${Date.now() + 1}`,
           role: "assistant",
-          content: `**元のメッセージ:**\n${result.originalMessage}\n\n**英語翻訳:**\n${result.translatedMessage}`,
-          thinking: result.thinking,
+          content: `**最終翻訳結果 (日本語):**\n${finalAnswer}`,
           timestamp: new Date(),
         }
 

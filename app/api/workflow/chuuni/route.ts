@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
-    // リクエストボディを取得
     const body = await request.json();
     const { message } = body;
 
-    // バリデーション
     if (!message || typeof message !== "string") {
       return NextResponse.json(
         { error: "メッセージが必要です" },
@@ -14,40 +12,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Mastraワークフローインスタンスを取得
     const { mastra } = await import("../../../../src/mastra");
-    const workflow = mastra.getWorkflow("translateWorkflow");
+    const workflow = mastra.getWorkflow("chuuniWorkflow");
 
     if (!workflow) {
       return NextResponse.json(
-        { error: "ワークフローが見つかりません" },
+        { error: "厨二病ワークフローが見つかりません" },
         { status: 404 }
       );
     }
 
-    // ワークフローを実行
     const run = await workflow.createRunAsync();
     const result = await run.start({
-      inputData: { message }
+      inputData: { message },
     });
 
-    // 結果を確認
     if (result.status === "success" && result.result) {
       return NextResponse.json({
         success: true,
-        finalJapaneseAnswer: result.result.finalJapaneseAnswer,
+        chuuniText: result.result.chuuniText,
       });
-    } else {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "ワークフローの実行に失敗しました",
-        },
-        { status: 500 }
-      );
     }
+
+    return NextResponse.json(
+      { success: false, error: "ワークフローの実行に失敗しました" },
+      { status: 500 }
+    );
   } catch (error) {
-    console.error("Workflow execution error:", error);
+    console.error("Chuuni workflow execution error:", error);
     return NextResponse.json(
       {
         success: false,

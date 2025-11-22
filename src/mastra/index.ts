@@ -5,11 +5,13 @@ import { LibSQLStore } from '@mastra/libsql';
 import { assistantAgent } from './agents/assistantAgent';
 import { translateAgent } from './agents/translateAgent';
 import { xAiAgent } from './agents/xAiAgent';
+import { chuuniAgent } from './agents/chuuniAgent';
 import { translateWorkflow } from './workflows/translateWorkflow';
+import { chuuniWorkflow } from './workflows/chuuniWorkflow';
 
 export const mastra = new Mastra({
-  agents: { assistantAgent, translateAgent, xAiAgent },
-  workflows: { translateWorkflow },
+  agents: { assistantAgent, translateAgent, xAiAgent, chuuniAgent },
+  workflows: { translateWorkflow, chuuniWorkflow },
   storage: new LibSQLStore({
     // stores observability, scores, ... into memory storage, if it needs to persist, change to file:../mastra.db
     url: ":memory:",

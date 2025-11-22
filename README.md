@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Reverse Translate
 
-## Getting Started
+## プロジェクト概要
 
-First, run the development server:
+Next.js + Mastra を利用し、マルチステップ翻訳や異世界風テキスト生成を行うチャットアプリです。現在は以下 2 種類のワークフローを提供しています。
+
+- `translate-workflow`: 日本語→アラビア文字→ヒエログリフ（絵文字）→英語回答→ハングル→日本語という狂気の多段翻訳を実行します。
+- `chuuni-workflow`: 普通の日本語文を、宇宙規模の陰謀が渦巻く厨二病テキストへと増幅します。
+
+## 開発サーバーの起動
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`http://localhost:3000` を開くと UI を確認できます。`.env` に各種 API キーを設定してください。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## API エンドポイント
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| メソッド | パス | 入力 | 出力 |
+| --- | --- | --- | --- |
+| POST | `/api/workflow/execute` | `{ "message": "..." }` | `{ "finalJapaneseAnswer": "..." }` |
+| POST | `/api/workflow/chuuni` | `{ "message": "..." }` | `{ "chuuniText": "..." }` |
 
-## Learn More
+どちらのエンドポイントも JSON を返し、`success` フラグとエラー詳細を含みます。
 
-To learn more about Next.js, take a look at the following resources:
+## スクリプト
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `npm run dev`: Next.js 開発サーバー起動
+- `npm run build`: 本番ビルド
+- `npm run start`: 本番サーバー起動
+- `npm run lint`: ESLint + TypeScript チェック
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Mastra ワークフローの開発
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`npm run mastra:dev` を使うと、ワークフローとエージェントをホットリロードで検証できます。`src/mastra/agents` にエージェント、`src/mastra/workflows` にワークフローを追加してください。
