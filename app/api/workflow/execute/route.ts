@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         finalJapaneseAnswer: result.result.finalJapaneseAnswer,
+        stages: result.result.stages,
       });
     } else {
       return NextResponse.json(

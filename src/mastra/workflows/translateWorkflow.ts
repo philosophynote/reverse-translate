@@ -1,6 +1,15 @@
 import { createWorkflow, createStep } from "@mastra/core/workflows";
 import { z } from "zod";
 
+const stageLogSchema = z.array(
+  z.object({
+    id: z.string(),
+    label: z.string(),
+    input: z.string(),
+    output: z.string(),
+  })
+);
+
 const japaneseToChuuniStep = createStep({
   id: "japanese-to-chuuni",
   inputSchema: z.object({
@@ -8,6 +17,7 @@ const japaneseToChuuniStep = createStep({
   }),
   outputSchema: z.object({
     chuuniJapanese: z.string(),
+    stages: stageLogSchema,
   }),
   execute: async ({ inputData, mastra }) => {
     const { message } = inputData;
@@ -16,8 +26,18 @@ const japaneseToChuuniStep = createStep({
       `以下の日本語原文を、宇宙規模の陰謀や異界の理が交錯する厨二病語録へと変換せよ。\n- 原文の出来事や意味を保ちつつ、過剰な比喩・ルビ・記号を編み込み、3文以上で語ること。\n- 語り口は芝居がかった日本語のみで、英語や絵文字は使わない。\n原文:\n${message}`
     );
 
+    const chuuniJapanese = (chuuniResult.text ?? "").trim();
+
     return {
-      chuuniJapanese: (chuuniResult.text ?? "").trim(),
+      chuuniJapanese,
+      stages: [
+        {
+          id: "japanese-to-chuuni",
+          label: "日本語→厨二病語録",
+          input: message,
+          output: chuuniJapanese,
+        },
+      ],
     };
   },
 });
@@ -26,19 +46,32 @@ const chuuniToArabicStep = createStep({
   id: "chuuni-to-arabic",
   inputSchema: z.object({
     chuuniJapanese: z.string(),
+    stages: stageLogSchema,
   }),
   outputSchema: z.object({
     arabicText: z.string(),
+    stages: stageLogSchema,
   }),
   execute: async ({ inputData, mastra }) => {
-    const { chuuniJapanese } = inputData;
+    const { chuuniJapanese, stages } = inputData;
     const translateAgent = mastra.getAgent("translateAgent");
     const arabicResult = await translateAgent.generate(
       `Translate the following Japanese text into Arabic script. Keep only Arabic characters.\n${chuuniJapanese}`
     );
 
+    const arabicText = (arabicResult.text ?? "").trim();
+
     return {
-      arabicText: (arabicResult.text ?? "").trim(),
+      arabicText,
+      stages: [
+        ...stages,
+        {
+          id: "chuuni-to-arabic",
+          label: "厨二日本語→アラビア文字",
+          input: chuuniJapanese,
+          output: arabicText,
+        },
+      ],
     };
   },
 });
@@ -47,19 +80,32 @@ const arabicToEnglishStep = createStep({
   id: "arabic-to-english",
   inputSchema: z.object({
     arabicText: z.string(),
+    stages: stageLogSchema,
   }),
   outputSchema: z.object({
     englishQuestion: z.string(),
+    stages: stageLogSchema,
   }),
   execute: async ({ inputData, mastra }) => {
-    const { arabicText } = inputData;
+    const { arabicText, stages } = inputData;
     const translateAgent = mastra.getAgent("translateAgent");
     const englishResult = await translateAgent.generate(
       `Translate the following Arabic text into English while preserving the nuance, tone, and any implied questions.\n${arabicText}`
     );
 
+    const englishQuestion = (englishResult.text ?? "").trim();
+
     return {
-      englishQuestion: (englishResult.text ?? "").trim(),
+      englishQuestion,
+      stages: [
+        ...stages,
+        {
+          id: "arabic-to-english",
+          label: "アラビア文字→英語",
+          input: arabicText,
+          output: englishQuestion,
+        },
+      ],
     };
   },
 });
@@ -68,19 +114,32 @@ const englishAnswerStep = createStep({
   id: "english-answer",
   inputSchema: z.object({
     englishQuestion: z.string(),
+    stages: stageLogSchema,
   }),
   outputSchema: z.object({
     englishAnswer: z.string(),
+    stages: stageLogSchema,
   }),
   execute: async ({ inputData, mastra }) => {
-    const { englishQuestion } = inputData;
+    const { englishQuestion, stages } = inputData;
     const trumpAgent = mastra.getAgent("trumpAgent");
     const englishAnswerResult = await trumpAgent.generate(
       `Answer the following question using Donald Trump's trademark tone: confident, boastful, and direct. Stay on topic and keep it in English only. Question: ${englishQuestion}`
     );
 
+    const englishAnswer = (englishAnswerResult.text ?? "").trim();
+
     return {
-      englishAnswer: (englishAnswerResult.text ?? "").trim(),
+      englishAnswer,
+      stages: [
+        ...stages,
+        {
+          id: "english-answer",
+          label: "英語回答",
+          input: englishQuestion,
+          output: englishAnswer,
+        },
+      ],
     };
   },
 });
@@ -89,19 +148,32 @@ const englishToHangulStep = createStep({
   id: "english-to-hangul",
   inputSchema: z.object({
     englishAnswer: z.string(),
+    stages: stageLogSchema,
   }),
   outputSchema: z.object({
     hangulAnswer: z.string(),
+    stages: stageLogSchema,
   }),
   execute: async ({ inputData, mastra }) => {
-    const { englishAnswer } = inputData;
+    const { englishAnswer, stages } = inputData;
     const translateAgent = mastra.getAgent("translateAgent");
     const hangulResult = await translateAgent.generate(
       `Translate the following English text into Korean (Hangul) only.\n${englishAnswer}`
     );
 
+    const hangulAnswer = (hangulResult.text ?? "").trim();
+
     return {
-      hangulAnswer: (hangulResult.text ?? "").trim(),
+      hangulAnswer,
+      stages: [
+        ...stages,
+        {
+          id: "english-to-hangul",
+          label: "英語→ハングル",
+          input: englishAnswer,
+          output: hangulAnswer,
+        },
+      ],
     };
   },
 });
@@ -110,19 +182,32 @@ const hangulToJapaneseStep = createStep({
   id: "hangul-to-japanese",
   inputSchema: z.object({
     hangulAnswer: z.string(),
+    stages: stageLogSchema,
   }),
   outputSchema: z.object({
     finalJapaneseAnswer: z.string(),
+    stages: stageLogSchema,
   }),
   execute: async ({ inputData, mastra }) => {
-    const { hangulAnswer } = inputData;
+    const { hangulAnswer, stages } = inputData;
     const translateAgent = mastra.getAgent("translateAgent");
     const japaneseResult = await translateAgent.generate(
       `Translate the following Korean (Hangul) text into natural Japanese. Keep sentences clear and readable without additional embellishment.\n${hangulAnswer}`
     );
 
+    const finalJapaneseAnswer = (japaneseResult.text ?? "").trim();
+
     return {
-      finalJapaneseAnswer: (japaneseResult.text ?? "").trim(),
+      finalJapaneseAnswer,
+      stages: [
+        ...stages,
+        {
+          id: "hangul-to-japanese",
+          label: "ハングル→日本語",
+          input: hangulAnswer,
+          output: finalJapaneseAnswer,
+        },
+      ],
     };
   },
 });
@@ -134,6 +219,7 @@ export const translateWorkflow = createWorkflow({
   }),
   outputSchema: z.object({
     finalJapaneseAnswer: z.string().describe("最終的な日本語での回答"),
+    stages: stageLogSchema,
   }),
 })
   .then(japaneseToChuuniStep)

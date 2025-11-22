@@ -65,11 +65,13 @@ export default function ChatPage() {
 
       if (response.ok && result.success) {
         const finalAnswer = result.finalJapaneseAnswer ?? "(結果が取得できませんでした)"
+        const stages = Array.isArray(result.stages) ? result.stages : []
         const aiResponse: Message = {
           id: `msg-${Date.now() + 1}`,
           role: "assistant",
-          content: `**最終翻訳結果 (日本語):**\n${finalAnswer}`,
+          content: `${finalAnswer}`,
           timestamp: new Date(),
+          stages,
         }
 
         const finalMessages = [...updatedMessages, aiResponse]
