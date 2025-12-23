@@ -123,48 +123,10 @@ const arabicToEnglishStep = createStep({
   },
 });
 
-const englishAnswerStep = createStep({
-  id: "english-answer",
-  inputSchema: z.object({
-    englishQuestion: z.string(),
-    stages: stageLogSchema,
-  }),
-  outputSchema: z.object({
-    englishAnswer: z.string(),
-    stages: stageLogSchema,
-  }),
-  execute: async ({ inputData, mastra }) => {
-    const { englishQuestion, stages } = inputData;
-    const trumpAgent = mastra.getAgent("trumpAgent");
-    const selectedModel = await trumpAgent.getModel();
-    const modelName = typeof selectedModel === "string" ? selectedModel : selectedModel.modelId || "unknown";
-
-    const englishAnswerResult = await trumpAgent.generate(
-      `Answer the following question using Donald Trump's trademark tone: confident, boastful, and direct. Stay on topic and keep it in English only. Question: ${englishQuestion}`
-    );
-
-    const englishAnswer = (englishAnswerResult.text ?? "").trim();
-
-    return {
-      englishAnswer,
-      stages: [
-        ...stages,
-        {
-          id: "english-answer",
-          label: "英語回答",
-          input: englishQuestion,
-          output: englishAnswer,
-          model: modelName,
-        },
-      ],
-    };
-  },
-});
-
 const englishToNetSlangStep = createStep({
   id: "english-to-net-slang",
   inputSchema: z.object({
-    englishAnswer: z.string(),
+    englishQuestion: z.string(),
     stages: stageLogSchema,
   }),
   outputSchema: z.object({
@@ -172,12 +134,10 @@ const englishToNetSlangStep = createStep({
     stages: stageLogSchema,
   }),
   execute: async ({ inputData, mastra }) => {
-    const { englishAnswer, stages } = inputData;
+    const { englishQuestion, stages } = inputData;
     const netSlangAgent = mastra.getAgent("netSlangAgent");
-    const selectedModel = await netSlangAgent.getModel();
-    const modelName = typeof selectedModel === "string" ? selectedModel : selectedModel.modelId || "unknown";
 
-    const netSlangResult = await netSlangAgent.generate(englishAnswer);
+    const netSlangResult = await netSlangAgent.generate(englishQuestion);
 
     const netSlangEnglish = (netSlangResult.text ?? "").trim();
 
@@ -187,10 +147,10 @@ const englishToNetSlangStep = createStep({
         ...stages,
         {
           id: "english-to-net-slang",
-          label: "英語→ネットスラング英語",
-          input: englishAnswer,
+          label: "英語質問→ネットスラング英語回答",
+          input: englishQuestion,
           output: netSlangEnglish,
-          model: modelName,
+          model: "xai/grok-3-mini-fast-latest",
         },
       ],
     };
@@ -286,7 +246,6 @@ export const translateWorkflow = createWorkflow({
   .then(japaneseToChuuniStep)
   .then(chuuniToArabicStep)
   .then(arabicToEnglishStep)
-  .then(englishAnswerStep)
   .then(englishToNetSlangStep)
   .then(englishToHangulStep)
   .then(hangulToJapaneseStep)

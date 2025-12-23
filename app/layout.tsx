@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Reverse Translate",
+  title: "Reverse Translate Chat",
   description: "支離滅裂な会話を楽しみましょう",
 };
 
