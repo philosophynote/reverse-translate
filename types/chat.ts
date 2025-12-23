@@ -3,6 +3,7 @@ export interface WorkflowStage {
   label: string
   input: string
   output: string
+  model?: string
 }
 
 export interface Message {

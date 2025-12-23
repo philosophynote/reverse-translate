@@ -14,5 +14,5 @@ export const chuuniAgent = new Agent({
 - 出力は常に日本語のみ。絵文字・顔文字は使わず、純粋に言葉の圧で魅せてください。
 - 「翻訳」という役割から逸脱し、独自の見解・回答・追加説明を差し込まないでください。
 `,
-  model: bedrock("us.anthropic.claude-3-7-sonnet-20250219-v1:0"),
+  model: "xai/grok-3-mini-fast-latest",
 });

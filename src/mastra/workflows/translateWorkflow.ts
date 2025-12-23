@@ -7,6 +7,7 @@ const stageLogSchema = z.array(
     label: z.string(),
     input: z.string(),
     output: z.string(),
+    model: z.string().optional(),
   })
 );
 
@@ -22,8 +23,11 @@ const japaneseToChuuniStep = createStep({
   execute: async ({ inputData, mastra }) => {
     const { message } = inputData;
     const chuuniAgent = mastra.getAgent("chuuniAgent");
+    const selectedModel = await chuuniAgent.getModel();
+    const modelName = typeof selectedModel === "string" ? selectedModel : selectedModel.modelId || "unknown";
+
     const chuuniResult = await chuuniAgent.generate(
-      `以下の日本語原文を、宇宙規模の陰謀や異界の理が交錯する厨二病語録へと変換せよ。\n- 原文の出来事や意味を保ちつつ、過剰な比喩・ルビ・記号を編み込み、3文以上で語ること。\n- 語り口は芝居がかった日本語のみで、英語や絵文字は使わない。\n原文:\n${message}`
+      `以下の日本語原文を、宇宙規模の陰謀や異界の理が交錙する厨二病語録へと変換せよ。\n- 原文の出来事や意味を保ちつつ、過剩な比喩・ルビ・記号を編み込み、3文以上で語ること。\n- 語り口は芝居がかった日本語のみで、英語や絵文字は使わない。\n原文:\n${message}`
     );
 
     const chuuniJapanese = (chuuniResult.text ?? "").trim();
@@ -36,6 +40,7 @@ const japaneseToChuuniStep = createStep({
           label: "日本語→厨二病語録",
           input: message,
           output: chuuniJapanese,
+          model: modelName,
         },
       ],
     };
@@ -55,6 +60,9 @@ const chuuniToArabicStep = createStep({
   execute: async ({ inputData, mastra }) => {
     const { chuuniJapanese, stages } = inputData;
     const translateAgent = mastra.getAgent("translateAgent");
+    const selectedModel = await translateAgent.getModel();
+    const modelName = typeof selectedModel === "string" ? selectedModel : selectedModel.modelId || "unknown";
+
     const arabicResult = await translateAgent.generate(
       `Translate the following Japanese text into Arabic script. Keep only Arabic characters.\n${chuuniJapanese}`
     );
@@ -70,6 +78,7 @@ const chuuniToArabicStep = createStep({
           label: "厨二日本語→アラビア文字",
           input: chuuniJapanese,
           output: arabicText,
+          model: modelName,
         },
       ],
     };
@@ -89,6 +98,9 @@ const arabicToEnglishStep = createStep({
   execute: async ({ inputData, mastra }) => {
     const { arabicText, stages } = inputData;
     const translateAgent = mastra.getAgent("translateAgent");
+    const selectedModel = await translateAgent.getModel();
+    const modelName = typeof selectedModel === "string" ? selectedModel : selectedModel.modelId || "unknown";
+
     const englishResult = await translateAgent.generate(
       `Translate the following Arabic text into English while preserving the nuance, tone, and any implied questions.\n${arabicText}`
     );
@@ -104,40 +116,7 @@ const arabicToEnglishStep = createStep({
           label: "アラビア文字→英語",
           input: arabicText,
           output: englishQuestion,
-        },
-      ],
-    };
-  },
-});
-
-const englishAnswerStep = createStep({
-  id: "english-answer",
-  inputSchema: z.object({
-    englishQuestion: z.string(),
-    stages: stageLogSchema,
-  }),
-  outputSchema: z.object({
-    englishAnswer: z.string(),
-    stages: stageLogSchema,
-  }),
-  execute: async ({ inputData, mastra }) => {
-    const { englishQuestion, stages } = inputData;
-    const trumpAgent = mastra.getAgent("trumpAgent");
-    const englishAnswerResult = await trumpAgent.generate(
-      `Answer the following question using Donald Trump's trademark tone: confident, boastful, and direct. Stay on topic and keep it in English only. Question: ${englishQuestion}`
-    );
-
-    const englishAnswer = (englishAnswerResult.text ?? "").trim();
-
-    return {
-      englishAnswer,
-      stages: [
-        ...stages,
-        {
-          id: "english-answer",
-          label: "英語回答",
-          input: englishQuestion,
-          output: englishAnswer,
+          model: modelName,
         },
       ],
     };
@@ -147,7 +126,7 @@ const englishAnswerStep = createStep({
 const englishToNetSlangStep = createStep({
   id: "english-to-net-slang",
   inputSchema: z.object({
-    englishAnswer: z.string(),
+    englishQuestion: z.string(),
     stages: stageLogSchema,
   }),
   outputSchema: z.object({
@@ -155,9 +134,10 @@ const englishToNetSlangStep = createStep({
     stages: stageLogSchema,
   }),
   execute: async ({ inputData, mastra }) => {
-    const { englishAnswer, stages } = inputData;
+    const { englishQuestion, stages } = inputData;
     const netSlangAgent = mastra.getAgent("netSlangAgent");
-    const netSlangResult = await netSlangAgent.generate(englishAnswer);
+
+    const netSlangResult = await netSlangAgent.generate(englishQuestion);
 
     const netSlangEnglish = (netSlangResult.text ?? "").trim();
 
@@ -167,9 +147,10 @@ const englishToNetSlangStep = createStep({
         ...stages,
         {
           id: "english-to-net-slang",
-          label: "英語→ネットスラング英語",
-          input: englishAnswer,
+          label: "英語質問→ネットスラング英語回答",
+          input: englishQuestion,
           output: netSlangEnglish,
+          model: "xai/grok-3-mini-fast-latest",
         },
       ],
     };
@@ -189,6 +170,9 @@ const englishToHangulStep = createStep({
   execute: async ({ inputData, mastra }) => {
     const { netSlangEnglish, stages } = inputData;
     const translateAgent = mastra.getAgent("translateAgent");
+    const selectedModel = await translateAgent.getModel();
+    const modelName = typeof selectedModel === "string" ? selectedModel : selectedModel.modelId || "unknown";
+
     const hangulResult = await translateAgent.generate(
       `Translate the following English text into Korean (Hangul) only.\n${netSlangEnglish}`
     );
@@ -204,6 +188,7 @@ const englishToHangulStep = createStep({
           label: "ネットスラング英語→ハングル",
           input: netSlangEnglish,
           output: hangulAnswer,
+          model: modelName,
         },
       ],
     };
@@ -223,6 +208,9 @@ const hangulToJapaneseStep = createStep({
   execute: async ({ inputData, mastra }) => {
     const { hangulAnswer, stages } = inputData;
     const translateAgent = mastra.getAgent("translateAgent");
+    const selectedModel = await translateAgent.getModel();
+    const modelName = typeof selectedModel === "string" ? selectedModel : selectedModel.modelId || "unknown";
+
     const japaneseResult = await translateAgent.generate(
       `Translate the following Korean (Hangul) text into natural Japanese. Keep sentences clear and readable without additional embellishment.\n${hangulAnswer}`
     );
@@ -238,6 +226,7 @@ const hangulToJapaneseStep = createStep({
           label: "ハングル→日本語",
           input: hangulAnswer,
           output: finalJapaneseAnswer,
+          model: modelName,
         },
       ],
     };
@@ -257,7 +246,6 @@ export const translateWorkflow = createWorkflow({
   .then(japaneseToChuuniStep)
   .then(chuuniToArabicStep)
   .then(arabicToEnglishStep)
-  .then(englishAnswerStep)
   .then(englishToNetSlangStep)
   .then(englishToHangulStep)
   .then(hangulToJapaneseStep)

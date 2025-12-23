@@ -252,7 +252,7 @@ export default function ChatPage() {
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center gap-6">
             <div className="text-center">
-              <h1 className="text-4xl font-bold text-foreground mb-2">ChatAI</h1>
+              <h1 className="text-4xl font-bold text-foreground mb-2">逆翻訳チャット</h1>
               <p className="text-muted-foreground text-lg">左のサイドバーから新しいチャットを始めてください</p>
             </div>
             <Button onClick={handleNewChat} size="lg">
