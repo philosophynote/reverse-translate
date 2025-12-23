@@ -29,7 +29,7 @@ export default function ChatContainer({ messages, isLoading }: ChatContainerProp
           {messages.map((message) => (
             <div key={message.id}>
               <MessageBubble message={message} />
-              {message.thinking && <ThinkingDisplay thinking={message.thinking} />}
+              {message.thinking && <ThinkingDisplay thinking={message.thinking} stages={message.stages} />}
             </div>
           ))}
           {isLoading && (

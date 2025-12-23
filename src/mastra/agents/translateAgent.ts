@@ -9,5 +9,11 @@ When you receive input, look for a directive in the format:
 Respond strictly in the requested language, preserving the original meaning, tone, and nuance.
 If no directive is provided, default to translating the text into English.
 Return only the translated text without explanations.`,
-  model: bedrock("us.anthropic.claude-haiku-4-5-20251001-v1:0"),
+  model: () => {
+    const models = [
+      bedrock("us.anthropic.claude-haiku-4-5-20251001-v1:0"),
+      "xai/grok-3-mini-fast-latest"
+    ];
+    return models[Math.floor(Math.random() * models.length)];
+  },
 });
